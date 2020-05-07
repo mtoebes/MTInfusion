@@ -1,0 +1,19 @@
+ <Ui>
+ <Frame name="DragFrame1" enableMouse="true" movable="true">
+ <Scripts>
+  <OnLoad>self:RegisterForDrag("LeftButton");</OnLoad>
+  <OnDragStart>self:StartMoving();</OnDragStart>
+  <OnDragStop>self:StopMovingOrSizing();</OnDragStop>
+ </Scripts>
+ <!-- Tags below add a visual element to the frame. -->
+ <Layers>
+  <Layer level="ARTWORK">
+   <Texture setAllPoints="true">
+    <Color r="1.0" g="0.5" b="0.0" a="0.5" />
+   </Texture>
+   </Layer>
+  </Layers>
+  <Size x="64" y="64" />
+ <Anchors><Anchor point="CENTER" relativeTo="UIParent"/></Anchors>
+</Frame>
+</Ui>
