@@ -1,10 +1,9 @@
 
-local castSpellName = "Power Infusion" -- "Power Word: Shield"
-local cdSpellName =  "Power Infusion"
+local castSpellName ="Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
+local cdSpellName ="Power Infusion"
 
--- local frame = CreateFrame("Frame")
-
-local playerbuttons = {}
+local prioPlayerName = "Rortek"
+local shortPlayerName = prioPlayerName
 
 local function buildFrame()
 	local frame = CreateFrame("Frame", "DragFrame2", UIParent)
@@ -29,34 +28,47 @@ local function buildFrame()
 	  end
 	end)
 	-- The code below makes the frame visible, and is not necessary to enable dragging.
-	frame:SetPoint("CENTER"); frame:SetWidth(64); frame:SetHeight(64);
-	local tex = frame:CreateTexture("ARTWORK");
-	tex:SetAllPoints();
-	tex:SetTexture(1.0, 0.5, 0); tex:SetAlpha(0.5);
+	frame:SetPoint("CENTER"); frame:SetWidth(100); frame:SetHeight(64);
 
 	return frame
 end 
 
+local function buildPlayerButton(frame)
+
+	local button = CreateFrame("CheckButton", "myFirstButton", frame, 'SecureUnitButtonTemplate')
+	button:SetSize(80,50)
+	button:SetPoint("CENTER",0,0)
+	button:SetText(player)
+	button:SetAlpha(1.0);
+	
+	button:SetNormalFontObject("GameFontNormalSmall");
+	button:SetHighlightFontObject("GameFontHighlightSmall");
+	button:SetDisabledFontObject("GameFontDisableSmall");
+	
+	button:SetAttribute("*type1", "macro") -- Target unit on left click
+	
+	button.text = button:CreateFontString(nil, "OVERLAY")
+	button.text:SetPoint("CENTER")
+	button.text:SetFont(STANDARD_TEXT_FONT, 16, "THINOUTLINE")
+	button.text:SetText("NONE")
+	
+	return button;
+end 
+
 local frame = buildFrame()
 
-local myButton = CreateFrame("CheckButton", "myFirstButton", frame, 'SecureUnitButtonTemplate')
-myButton:SetSize(50,50)
-myButton:SetPoint("CENTER",0,0)
-myButton:SetText(player)
-myButton:SetAlpha(1.0);
+local tex = frame:CreateTexture("ARTWORK");
+tex:SetAllPoints();
+tex:SetColorTexture(1.0, 0.5, 0); tex:SetAlpha(0.5);
 
-myButton:SetNormalFontObject("GameFontNormalSmall");
-myButton:SetHighlightFontObject("GameFontHighlightSmall");
-myButton:SetDisabledFontObject("GameFontDisableSmall");
-
-myButton:SetAttribute("*type1", "macro") -- Target unit on left click
-
-myButton.text = myButton:CreateFontString(nil, "OVERLAY")
-myButton.text:SetPoint("CENTER")
-myButton.text:SetFont(STANDARD_TEXT_FONT, 16, "THINOUTLINE")
-myButton.text:SetText("NONE")
+local playerButton = buildPlayerButton(frame)
 
 local function huFilter(player)
+
+	if player == nil then
+		return nil
+	end 
+
 	local removestring = "-"..GetRealmName()
 	if player:find(removestring) then
 		return string.gsub(player, removestring, "")
@@ -67,7 +79,10 @@ end
 
 local function getPICooldown() 
 	start, duration, enabled, modRate = GetSpellCooldown(cdSpellName)
-	--start, duration, enabled, modRate = GetSpellCooldown("Power Infusion")
+
+	if (start == nil or duration == nil) then
+		return -1
+	end 
 
 	if ( start > 0 and duration > 0) then
 		local cdLeft = start + duration - GetTime()
@@ -76,11 +91,6 @@ local function getPICooldown()
 		return 0
 	end
 end
-
-local function castPi(playerName)
-	print("casting pi")
-	CastSpellByName(castSpellName);
-end 
 
 local function whisperPlayer(player, msg) 
 	SendChatMessage(msg , "WHISPER", nil, player);
@@ -96,74 +106,106 @@ local function containsPITrigger(msg)
 	return false
 end
 
-local function addButton(player) 
-	local myButton = CreateFrame("CheckButton", "myFirstButton", frame, 'SecureUnitButtonTemplate')
-	myButton:SetSize(64,64)
-	myButton:SetPoint("CENTER",0,0)
-	myButton:SetText(player)
-	myButton:SetAlpha(1.0);
+local function updatePlayerButton(time, playerName)
 
-	myButton:SetNormalFontObject("GameFontNormalSmall");
-	myButton:SetHighlightFontObject("GameFontHighlightSmall");
-	myButton:SetDisabledFontObject("GameFontDisableSmall");
-	
-	myButton:SetAttribute("*type1", "macro") -- Target unit on left click
-	myButton:SetAttribute("macrotext", "/target "..huFilter(player).."\n/use ".. castSpellName.."\n")
+	shortPlayerName = huFilter(playerName)
 
-	myButton.text = myButton:CreateFontString(nil, "OVERLAY")
-	myButton.text:SetPoint("CENTER")
-	myButton.text:SetFont(STANDARD_TEXT_FONT, 16, "THINOUTLINE")
-	myButton.text:SetText(huFilter(player))
+	if playerName then
 
-end
+		if time == 0 then
+			tex:SetColorTexture(0.0, 1.0, 0.0);
+			buttonText = shortPlayerName
+			macrotext = "/target "..shortPlayerName.."\n/use ".. castSpellName.."\n".."/w "..shortPlayerName.." Power Infusion casted. Light then up!"
+		else 
+			tex:SetColorTexture(1.0, 0.0, 0.0); 
+			buttonText = shortPlayerName.."\n"..time.." sec"
+			macrotext = ""
+		end 
 
-local function getPlayerButton(playerName) 
-	return nil
-end 
-
-local function addPlayerButton(playerName)
-	print ("here")
-	local existingButton = getPlayerButton(playerName)
-	myButton:SetAttribute("macrotext", "/target "..huFilter(player).."\n/use ".. castSpellName.."\n")
-	--if existingButton == nil then
-		--addButton(playerName)
-		--myButton:SetAttribute("macrotext", "/target "..huFilter(player).."\n/use ".. castSpellName.."\n")
-		--print("addPlayerButton: button for" .. playerName)
-	--else
-		--print("addPlayerButton: button already exists for" .. playerName)
-	--end
-
-end
-
-local function removePlayerButton(playerName)
-
-	local existingButton = getPlayerButton(playerName)
-
-	if existingButton ~= nil then
-		print("removePlayerButton: button for" .. playerName)
 	else
-		print("removePlayerButton: button doesnt exist for" .. playerName)
+		tex:SetColorTexture(1.0, 1.0, 0.0); 
+		buttonText = time.." seconds"
+		macrotext = ""
 	end
 
-end 
+	playerButton.text:SetText(buttonText)
+	playerButton:SetAttribute("macrotext",macrotext)
+
+end
+
+local function isPlayerOnline(playerName)
+
+	if playerName == nil then
+		return false
+	else
+		return UnitExists(playerName)
+	end
+end
+
+local function isPrioOnline()
+	return isPlayerOnline(prioPlayerName)
+end
 
 local function myEventHandler(self, event, ...)
 	if event == "CHAT_MSG_WHISPER" then
 		local msg, sender = ...
-		
-		if containsPITrigger(msg) then
 
-			--addButton(sender)
-			--addPlayerButton(sender)
-			local cdLeft = getPICooldown()
-			if cdLeft == 0 then
-				whisperPlayer(sender, "Power Infusion is ready")
-			else 
-				whisperPlayer(sender, "Power Infusion is on cooldown, wait " .. cdLeft .. " seconds for the next one")
-			end
+		if containsPITrigger(msg) and self.cdLeft >=0 then
+			
+			if isPrioOnline()==false or prioPlayerName == huFilter(sender) then
+
+				shortPlayerName = huFilter(sender)
+
+				updatePlayerButton(self.cdLeft, shortPlayerName)
+
+				if self.cdLeft == 0 then
+					whisperPlayer(sender, "Power Infusion is ready")
+				else 
+					whisperPlayer(sender, "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one")
+				end		
+			else
+				if self.cdLeft == 0 then
+					whisperPlayer(sender, "Power Infusion is ready (Note: you are not marked as the primary receiver)")
+				else
+					whisperPlayer(sender, "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one (Note: you are not marked as the primary receiver)")
+				end
+			end 
 		end
 	end
 end
 
 frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:SetScript("OnEvent", myEventHandler)
+
+frame:SetScript("OnUpdate", function(self, sinceLastUpdate) frame:onUpdate(sinceLastUpdate); end);
+
+function frame:onUpdate(sinceLastUpdate)
+	self.sinceLastUpdate = (self.sinceLastUpdate or 0) + sinceLastUpdate;
+
+	interval = 5
+
+	if (self.cdLeft ~= nil and self.cdLeft < 15) then
+		interval = 1
+	end
+
+	if (self.cdLeft == nil) then
+		self.cdLeft = getPICooldown()
+	end 
+
+	if ( self.sinceLastUpdate >= interval ) then 
+
+		local lastCdLeft = self.cdLeft
+
+		self.cdLeft = getPICooldown()
+
+		updatePlayerButton(self.cdLeft, shortPlayerName)
+
+		if self.cdLeft == 0 and lastCdLeft ~= nil and lastCdLeft ~= 0 then
+			if isPrioOnline() then 
+				whisperPlayer(prioPlayerName, "Power Infusion is ready")
+			end 
+		end
+
+		self.sinceLastUpdate = 0;
+	end
+end
