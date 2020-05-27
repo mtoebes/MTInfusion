@@ -1,8 +1,9 @@
 
-local castSpellName ="Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
-local cdSpellName ="Power Infusion"
+local castSpellName = "Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
+local cdSpellName = "Power Infusion"
 
-local prioPlayerName = "Rortek"
+local prioPlayerName = "Village"
+local prioStatus = false
 local shortPlayerName = prioPlayerName
 
 local function buildFrame()
@@ -93,7 +94,9 @@ local function getPICooldown()
 end
 
 local function whisperPlayer(player, msg) 
-	SendChatMessage(msg , "WHISPER", nil, player);
+	if msg ~= nil then
+		SendChatMessage(msg , "WHISPER", nil, player);
+	end
 end
 
 local function containsPITrigger(msg)
@@ -113,16 +116,24 @@ local function updatePlayerButton(time, playerName)
 	if playerName then
 
 		if time == 0 then
-			tex:SetColorTexture(0.0, 1.0, 0.0);
+			-- Green Button
+			
+			if (prioStatus) then
+				tex:SetColorTexture(0.0, 1.0, 0.0);
+			else 
+				tex:SetColorTexture(1.0, 1.0, 0.0); 
+			end 
 			buttonText = shortPlayerName
 			macrotext = "/target "..shortPlayerName.."\n/use ".. castSpellName.."\n".."/w "..shortPlayerName.." Power Infusion casted. Light then up!"
 		else 
+			-- Red Button
 			tex:SetColorTexture(1.0, 0.0, 0.0); 
 			buttonText = shortPlayerName.."\n"..time.." sec"
 			macrotext = ""
 		end 
 
 	else
+		-- Yellow Button
 		tex:SetColorTexture(1.0, 1.0, 0.0); 
 		buttonText = time.." seconds"
 		macrotext = ""
@@ -152,24 +163,28 @@ local function myEventHandler(self, event, ...)
 
 		if containsPITrigger(msg) and self.cdLeft >=0 then
 			
-			if isPrioOnline()==false or prioPlayerName == huFilter(sender) then
+			PlaySoundFile("Sound\\Spells\\PVPFlagTaken.ogg") 
 
-				shortPlayerName = huFilter(sender)
+			shortPlayerName = huFilter(sender)
 
+			local responseMessage = nil
+
+			if prioPlayerName == shortPlayerName then 
+				prioStatus = true
 				updatePlayerButton(self.cdLeft, shortPlayerName)
+			end
 
-				if self.cdLeft == 0 then
-					whisperPlayer(sender, "Power Infusion is ready")
-				else 
-					whisperPlayer(sender, "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one")
-				end		
-			else
-				if self.cdLeft == 0 then
-					whisperPlayer(sender, "Power Infusion is ready (Note: you are not marked as the primary receiver)")
-				else
-					whisperPlayer(sender, "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one (Note: you are not marked as the primary receiver)")
-				end
+			if self.cdLeft == 0 then
+				responseMessage = nil -- "Power Infusion is ready"
+			else 
+				responseMessage = "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one"
+			end	
+
+			if responseMessage ~= nil and prioPlayerName ~= shortPlayerName and isPrioOnline()==true then
+				responseMessage = responseMessage .. " (Note: you are not marked as the primary receiver)"
 			end 
+
+			whisperPlayer(sender, responseMessage)
 		end
 	end
 end
@@ -197,6 +212,10 @@ function frame:onUpdate(sinceLastUpdate)
 		local lastCdLeft = self.cdLeft
 
 		self.cdLeft = getPICooldown()
+
+		if (self.cdLeft > lastCdLeft) then
+			prioStatus = false
+		end 
 
 		updatePlayerButton(self.cdLeft, shortPlayerName)
 
