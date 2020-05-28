@@ -1,10 +1,12 @@
 
-local castSpellName = "Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
-local cdSpellName = "Power Infusion"
+local castSpellName = "Power Infusion" --  "Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
+local cdSpellName =  "Power Infusion"
 
-local prioPlayerName = "Village"
-local prioStatus = false
-local shortPlayerName = prioPlayerName
+local prioPlayerName = "Taddymayson"
+local prioPlayerStatus = false
+
+local lastPlayerName = nil
+local lastPlayerStatus = false
 
 local function buildFrame()
 	local frame = CreateFrame("Frame", "DragFrame2", UIParent)
@@ -34,11 +36,11 @@ local function buildFrame()
 	return frame
 end 
 
-local function buildPlayerButton(frame)
+local function buildButton(frame, x, y)
 
 	local button = CreateFrame("CheckButton", "myFirstButton", frame, 'SecureUnitButtonTemplate')
 	button:SetSize(80,50)
-	button:SetPoint("CENTER",0,0)
+	button:SetPoint("CENTER",x,y)
 	button:SetText(player)
 	button:SetAlpha(1.0);
 	
@@ -58,11 +60,27 @@ end
 
 local frame = buildFrame()
 
-local tex = frame:CreateTexture("ARTWORK");
-tex:SetAllPoints();
-tex:SetColorTexture(1.0, 0.5, 0); tex:SetAlpha(0.5);
+local prioButton = buildButton(frame, 0, 0)
+local lastButton = buildButton(frame, 0, -60)
 
-local playerButton = buildPlayerButton(frame)
+local prioButtonTex = prioButton:CreateTexture("ARTWORK");
+prioButtonTex:SetAllPoints();
+prioButtonTex:SetColorTexture(1.0, 0.5, 0); 
+prioButtonTex:SetAlpha(0.5);
+
+local lastButtonTex = lastButton:CreateTexture("ARTWORK");
+lastButtonTex:SetAllPoints();
+lastButtonTex:SetColorTexture(1.0, 0.5, 0); 
+lastButtonTex:SetAlpha(0.5);
+
+local function isPlayerOnline(playerName)
+
+	if playerName ~= nil then
+		return UnitExists(playerName)
+	end
+
+	return false 
+end
 
 local function huFilter(player)
 
@@ -109,52 +127,51 @@ local function containsPITrigger(msg)
 	return false
 end
 
-local function updatePlayerButton(time, playerName)
+local function updateButton(cdLeft, playerName, playerStatus, button, buttonTex)
 
-	shortPlayerName = huFilter(playerName)
+	if isPlayerOnline(playerName) then 
+		
+		alpha = .5
+		buttonText = playerName
 
-	if playerName then
+		if cdLeft == 0 then
 
-		if time == 0 then
-			-- Green Button
-			
-			if (prioStatus) then
-				tex:SetColorTexture(0.0, 1.0, 0.0);
+			macrotext = "/target "..playerName.."\n/use ".. castSpellName.."\n".."/w "..playerName.." Power Infusion casted. Light then up!"
+
+			if playerStatus then
+				-- Green 
+				buttonTex:SetColorTexture(0.0, 1.0, 0.0);
 			else 
-				tex:SetColorTexture(1.0, 1.0, 0.0); 
+				-- Yellow
+				buttonTex:SetColorTexture(1.0, 1.0, 0.0); 
 			end 
-			buttonText = shortPlayerName
-			macrotext = "/target "..shortPlayerName.."\n/use ".. castSpellName.."\n".."/w "..shortPlayerName.." Power Infusion casted. Light then up!"
-		else 
-			-- Red Button
-			tex:SetColorTexture(1.0, 0.0, 0.0); 
-			buttonText = shortPlayerName.."\n"..time.." sec"
-			macrotext = ""
-		end 
+		else
 
-	else
-		-- Yellow Button
-		tex:SetColorTexture(1.0, 1.0, 0.0); 
-		buttonText = time.." seconds"
+			buttonText = buttonText.."\n"..cdLeft.." sec"
+			macrotext = ""
+
+			-- Red 
+			buttonTex:SetColorTexture(1.0, 0.0, 0.0); 
+		end 
+	else 
+		
+		alpha = 0
+		buttonText = nil
 		macrotext = ""
 	end
 
-	playerButton.text:SetText(buttonText)
-	playerButton:SetAttribute("macrotext",macrotext)
+	button.text:SetText(buttonText)
+	button:SetAttribute("macrotext",macrotext)
 
+	buttonTex:SetAlpha(alpha)
 end
 
-local function isPlayerOnline(playerName)
-
-	if playerName == nil then
-		return false
-	else
-		return UnitExists(playerName)
-	end
+local function updateLastButton(cdLeft)
+	updateButton(cdLeft, lastPlayerName, lastPlayerStatus, lastButton, lastButtonTex)
 end
 
-local function isPrioOnline()
-	return isPlayerOnline(prioPlayerName)
+local function updatePrioButton(cdLeft)
+	updateButton(cdLeft, prioPlayerName, prioPlayerStatus, prioButton, prioButtonTex)
 end
 
 local function myEventHandler(self, event, ...)
@@ -165,22 +182,30 @@ local function myEventHandler(self, event, ...)
 			
 			PlaySoundFile("Sound\\Spells\\PVPFlagTaken.ogg") 
 
-			shortPlayerName = huFilter(sender)
+			local playerName = huFilter(sender)
 
 			local responseMessage = nil
 
-			if prioPlayerName == shortPlayerName then 
-				prioStatus = true
-				updatePlayerButton(self.cdLeft, shortPlayerName)
+			if prioPlayerName == playerName then 
+				prioPlayerStatus = true
+				updatePrioButton(self.cdLeft)
+			else
+				lastPlayerName = playerName
+				lastPlayerStatus = true
+				updateLastButton(self.cdLeft)
 			end
 
 			if self.cdLeft == 0 then
-				responseMessage = nil -- "Power Infusion is ready"
+				if isPlayerOnline(prioPlayerName) and prioPlayerName ~= playerName then
+					responseMessage = "Power Infusion is ready"
+				else 
+					responseMessage = nil -- "Power Infusion is ready"
+				end 
 			else 
 				responseMessage = "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one"
 			end	
 
-			if responseMessage ~= nil and prioPlayerName ~= shortPlayerName and isPrioOnline()==true then
+			if responseMessage ~= nil and isPlayerOnline(prioPlayerName) and prioPlayerName ~= playerName then
 				responseMessage = responseMessage .. " (Note: you are not marked as the primary receiver)"
 			end 
 
@@ -208,20 +233,24 @@ function frame:onUpdate(sinceLastUpdate)
 	end 
 
 	if ( self.sinceLastUpdate >= interval ) then 
-
+		
 		local lastCdLeft = self.cdLeft
 
 		self.cdLeft = getPICooldown()
 
 		if (self.cdLeft > lastCdLeft) then
-			prioStatus = false
+			prioPlayerStatus = false
+			lastPlayerStatus = false
 		end 
 
-		updatePlayerButton(self.cdLeft, shortPlayerName)
+		updatePrioButton(self.cdLeft)
+		updateLastButton(self.cdLeft)
 
 		if self.cdLeft == 0 and lastCdLeft ~= nil and lastCdLeft ~= 0 then
-			if isPrioOnline() then 
+			if isPlayerOnline(prioPlayerName) then 
 				whisperPlayer(prioPlayerName, "Power Infusion is ready")
+			elseif isPlayerOnline(lastPlayerName) then 
+				whisperPlayer(lastPlayerName, "Power Infusion is ready")
 			end 
 		end
 
