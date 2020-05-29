@@ -177,6 +177,7 @@ end
 local function myEventHandler(self, event, ...)
 	if event == "CHAT_MSG_WHISPER" then
 		local msg, sender = ...
+		self.cdLeft = getPICooldown()
 
 		if containsPITrigger(msg) and self.cdLeft >=0 then
 			
@@ -230,15 +231,15 @@ function frame:onUpdate(sinceLastUpdate)
 
 	if (self.cdLeft == nil) then
 		self.cdLeft = getPICooldown()
+		self.lastCdLeft = self.cdLeft
 	end 
 
 	if ( self.sinceLastUpdate >= interval ) then 
 		
-		local lastCdLeft = self.cdLeft
+		self.lastCdLeft = self.cdLeft
 
 		self.cdLeft = getPICooldown()
 
-		if (self.cdLeft > lastCdLeft) then
 			prioPlayerStatus = false
 			lastPlayerStatus = false
 		end 
@@ -246,7 +247,7 @@ function frame:onUpdate(sinceLastUpdate)
 		updatePrioButton(self.cdLeft)
 		updateLastButton(self.cdLeft)
 
-		if self.cdLeft == 0 and lastCdLeft ~= nil and lastCdLeft ~= 0 then
+		if self.cdLeft == 0 and self.lastCdLeft ~= nil and self.lastCdLeft ~= 0 then
 			if isPlayerOnline(prioPlayerName) then 
 				whisperPlayer(prioPlayerName, "Power Infusion is ready")
 			elseif isPlayerOnline(lastPlayerName) then 
