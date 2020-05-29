@@ -240,6 +240,7 @@ function frame:onUpdate(sinceLastUpdate)
 
 		self.cdLeft = getPICooldown()
 
+		if (self.cdLeft > self.lastCdLeft) then
 			prioPlayerStatus = false
 			lastPlayerStatus = false
 		end 
