@@ -1,12 +1,31 @@
 
 local castSpellName = "Power Infusion" --  "Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
-local cdSpellName =  "Power Infusion"
+local cdSpellName = "Power Infusion"
+local cdSpellSeconds = 120
 
-local prioPlayerName = "Taddymayson"
-local prioPlayerStatus = false
-
+local prioPlayerName = nil
 local lastPlayerName = nil
-local lastPlayerStatus = false
+
+local targetList = {} 
+
+local function isPlayerOnline(playerName)
+
+	if playerName ~= nil then
+		return true -- UnitExists(playerName)
+	end
+
+	return false 
+end
+
+local function getTarget(playerName)
+	for i, target in ipairs(targetList) do
+		if target.playerName == playerName then
+			return target, i
+		end
+	end 
+
+	return nil, -1
+end 
 
 local function buildFrame()
 	local frame = CreateFrame("Frame", "DragFrame2", UIParent)
@@ -36,12 +55,15 @@ local function buildFrame()
 	return frame
 end 
 
-local function buildButton(frame, x, y)
+local function buildPlayerButton(frame, target)
 
-	local button = CreateFrame("CheckButton", "myFirstButton", frame, 'SecureUnitButtonTemplate')
+	target.isPendingSetup=false
+
+	local playerName = target.playerName
+	
+	local button = CreateFrame("CheckButton", "playerButton"..target.playerName, frame, 'SecureUnitButtonTemplate')
 	button:SetSize(80,50)
-	button:SetPoint("CENTER",x,y)
-	button:SetText(player)
+	button:SetPoint("CENTER",0,-60 * target.index)
 	button:SetAlpha(1.0);
 	
 	button:SetNormalFontObject("GameFontNormalSmall");
@@ -53,34 +75,117 @@ local function buildButton(frame, x, y)
 	button.text = button:CreateFontString(nil, "OVERLAY")
 	button.text:SetPoint("CENTER")
 	button.text:SetFont(STANDARD_TEXT_FONT, 16, "THINOUTLINE")
-	button.text:SetText("NONE")
+	button.text:SetText(target.playerName)
 	
-	return button;
+	target.macrotext = "/target "..target.playerName.."\n/use ".. castSpellName.."\n".."/w "..target.playerName.." Power Infusion casted. Light them up!"
+
+	button:SetAttribute("macrotext",target.macrotext)
+	target.button = button
+
+	target.buttonTex = target.button:CreateTexture("ARTWORK");
+	target.buttonTex:SetAllPoints();
+	target.buttonTex:SetColorTexture(1.0, 0.5, 0); 
+	target.buttonTex:SetAlpha(0.5);
+
+	return button
 end 
 
 local frame = buildFrame()
 
-local prioButton = buildButton(frame, 0, 0)
-local lastButton = buildButton(frame, 0, -60)
+local function addTarget(playerName)
 
-local prioButtonTex = prioButton:CreateTexture("ARTWORK");
-prioButtonTex:SetAllPoints();
-prioButtonTex:SetColorTexture(1.0, 0.5, 0); 
-prioButtonTex:SetAlpha(0.5);
+	if playerName == nil then
+		return
+	end 
 
-local lastButtonTex = lastButton:CreateTexture("ARTWORK");
-lastButtonTex:SetAllPoints();
-lastButtonTex:SetColorTexture(1.0, 0.5, 0); 
-lastButtonTex:SetAlpha(0.5);
+	local existingTarget, index = getTarget(playerName) 
 
-local function isPlayerOnline(playerName)
+	if existingTarget ~= nil then
+		return existingTarget
+	end 
 
-	if playerName ~= nil then
-		return UnitExists(playerName)
+	local target = {}
+	target.playerName = playerName
+	target.index = getn(targetList)
+	target.requested = false
+
+	target.isPendingSetup = InCombatLockdown()
+
+	target.macrotext = "/target "..playerName.."\n/use ".. castSpellName.."\n".."/w "..playerName.." Power Infusion casted. Light then up!"
+
+	table.insert(targetList, target)
+
+	if target.isPendingSetup==false then 
+		buildPlayerButton(frame, target)
+	end 
+
+	return target
+
+end
+
+local function removeTarget(playerName)
+
+	local existingTarget, index = getTarget(playerName) 
+	if existingTarget == nil then
+		return
 	end
 
-	return false 
-end
+	existingTarget.button:Hide();
+
+	table.remove(targetList, index)
+
+	for i, target in ipairs(targetList) do
+
+		if target.index >= index then
+			target.index = target.index-1
+			target.button:SetPoint("CENTER",0,-60 * target.index)
+		end
+	end 
+
+
+end 
+
+local function updateTarget(cdLeft, target)
+	
+	local playerName = target.playerName
+	local button = target.button
+	local buttonTex = target.buttonTex
+	local playerStatus = target.requested
+
+	if button == nil then
+		return
+	end 
+
+	if isPlayerOnline(playerName) then 
+		
+		alpha = .5
+		buttonText = playerName
+
+		if cdLeft == 0 then
+			if playerStatus then
+				-- Green 
+				buttonTex:SetColorTexture(0.0, 1.0, 0.0);
+			else 
+				-- Yellow
+				buttonTex:SetColorTexture(1.0, 1.0, 0.0); 
+			end 
+		else
+
+			buttonText = buttonText.."\n"..cdLeft.." sec"
+
+			-- Red 
+			buttonTex:SetColorTexture(1.0, 0.0, 0.0); 
+		end 
+	else 
+		
+		alpha = 0
+		buttonText = nil
+	end
+
+	button.text:SetText(buttonText)
+	buttonTex:SetAlpha(alpha)
+
+end 
 
 local function huFilter(player)
 
@@ -127,53 +232,6 @@ local function containsPITrigger(msg)
 	return false
 end
 
-local function updateButton(cdLeft, playerName, playerStatus, button, buttonTex)
-
-	if isPlayerOnline(playerName) then 
-		
-		alpha = .5
-		buttonText = playerName
-
-		if cdLeft == 0 then
-
-			macrotext = "/target "..playerName.."\n/use ".. castSpellName.."\n".."/w "..playerName.." Power Infusion casted. Light then up!"
-
-			if playerStatus then
-				-- Green 
-				buttonTex:SetColorTexture(0.0, 1.0, 0.0);
-			else 
-				-- Yellow
-				buttonTex:SetColorTexture(1.0, 1.0, 0.0); 
-			end 
-		else
-
-			buttonText = buttonText.."\n"..cdLeft.." sec"
-			macrotext = ""
-
-			-- Red 
-			buttonTex:SetColorTexture(1.0, 0.0, 0.0); 
-		end 
-	else 
-		
-		alpha = 0
-		buttonText = nil
-		macrotext = ""
-	end
-
-	button.text:SetText(buttonText)
-	button:SetAttribute("macrotext",macrotext)
-
-	buttonTex:SetAlpha(alpha)
-end
-
-local function updateLastButton(cdLeft)
-	updateButton(cdLeft, lastPlayerName, lastPlayerStatus, lastButton, lastButtonTex)
-end
-
-local function updatePrioButton(cdLeft)
-	updateButton(cdLeft, prioPlayerName, prioPlayerStatus, prioButton, prioButtonTex)
-end
-
 local function myEventHandler(self, event, ...)
 	if event == "CHAT_MSG_WHISPER" then
 		local msg, sender = ...
@@ -181,24 +239,26 @@ local function myEventHandler(self, event, ...)
 
 		if containsPITrigger(msg) and self.cdLeft >=0 then
 			
+			if isPlayerOnline(sender)==false then
+				return
+			end 
+
 			PlaySoundFile("Sound\\Spells\\PVPFlagTaken.ogg") 
+
+			local playerExists = getTarget(sender) ~= nil
 
 			local playerName = huFilter(sender)
 
 			local responseMessage = nil
 
-			if prioPlayerName == playerName then 
-				prioPlayerStatus = true
-				updatePrioButton(self.cdLeft)
-			else
-				lastPlayerName = playerName
-				lastPlayerStatus = true
-				updateLastButton(self.cdLeft)
-			end
+			lastPlayerName = playerName
+
+			local target = addTarget(playerName)
+			target.requested = true
 
 			if self.cdLeft == 0 then
 				if isPlayerOnline(prioPlayerName) and prioPlayerName ~= playerName then
-					responseMessage = "Power Infusion is ready"
+					responseMessage = nil -- "Power Infusion is ready"
 				else 
 					responseMessage = nil -- "Power Infusion is ready"
 				end 
@@ -210,6 +270,7 @@ local function myEventHandler(self, event, ...)
 				responseMessage = responseMessage .. " (Note: you are not marked as the primary receiver)"
 			end 
 
+			updateTarget(self.cdLeft, target)
 			whisperPlayer(sender, responseMessage)
 		end
 	end
@@ -217,7 +278,6 @@ end
 
 frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:SetScript("OnEvent", myEventHandler)
-
 frame:SetScript("OnUpdate", function(self, sinceLastUpdate) frame:onUpdate(sinceLastUpdate); end);
 
 function frame:onUpdate(sinceLastUpdate)
@@ -225,37 +285,75 @@ function frame:onUpdate(sinceLastUpdate)
 
 	interval = 5
 
-	if (self.cdLeft ~= nil and self.cdLeft < 15) then
-		interval = 1
-	end
-
 	if (self.cdLeft == nil) then
 		self.cdLeft = getPICooldown()
 		self.lastCdLeft = self.cdLeft
+		self.onCd = false
 	end 
 
-	if ( self.sinceLastUpdate >= interval ) then 
+	if (self.cdLeft < 15) then
+		interval = 1
+	end
+
+	if ( self.sinceLastUpdate >= interval) then 
 		
+		local combatLockdown = InCombatLockdown()
+
 		self.lastCdLeft = self.cdLeft
 
 		self.cdLeft = getPICooldown()
 
-		if (self.cdLeft > self.lastCdLeft) then
-			prioPlayerStatus = false
-			lastPlayerStatus = false
+		if self.onCd then
+			if self.cdLeft == 0 then
+				self.onCd = false
+				
+				if isPlayerOnline(lastPlayerName) then 
+					whisperPlayer(lastPlayerName, "Power Infusion is ready")
+				end 
+			end
+		else 
+			self.onCd = false
+			if self.cdLeft > 120 then
+				self.onCd = true
+
+				for i, target in ipairs(targetList) do
+					target.requested = false
+				end
+			end
+		end
+	
+		if combatLockdown == false then
+			for i, target in ipairs(targetList) do
+				if target.isPendingSetup then
+					buildPlayerButton(frame, target)
+				end
+			end 
 		end 
 
-		updatePrioButton(self.cdLeft)
-		updateLastButton(self.cdLeft)
-
-		if self.cdLeft == 0 and self.lastCdLeft ~= nil and self.lastCdLeft ~= 0 then
-			if isPlayerOnline(prioPlayerName) then 
-				whisperPlayer(prioPlayerName, "Power Infusion is ready")
-			elseif isPlayerOnline(lastPlayerName) then 
-				whisperPlayer(lastPlayerName, "Power Infusion is ready")
-			end 
+		for i, target in ipairs(targetList) do
+			updateTarget(self.cdLeft, target)
 		end
 
 		self.sinceLastUpdate = 0;
 	end
 end
+
+local function MyAddonCommands(msg, editbox)
+
+	local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
+
+	if cmd == "add" and args ~= "" then
+		-- Handle adding of the contents of rest... to something.
+		local target = addTarget(args)	
+	elseif cmd == "remove" and args ~= "" then
+		removeTarget(args)  
+	else
+		-- If not handled above, display some sort of help message
+		print("Syntax: /mtpi (add|remove) someIdentifier");
+	end
+
+  end
+  
+  SLASH_HELLOWORLD1 = '/mtpi'
+  
+  SlashCmdList["HELLOWORLD"] = MyAddonCommands   -- add /hiw and /hellow to command list
