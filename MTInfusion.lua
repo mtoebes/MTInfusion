@@ -182,6 +182,20 @@ local function removeTarget(playerName)
 
 end 
 
+
+local function prioTarget(playerName)
+
+	if playerName == nil then
+		return
+	end 
+
+	playerName = playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
+	
+	prioPlayerName = playerName
+	addTarget(playerName)
+end 
+
+
 local function updateTarget(cdLeft, target)
 	
 	local playerName = target.playerName
@@ -306,7 +320,10 @@ local function myEventHandler(self, event, ...)
 				responseMessage = "Power Infusion is on cooldown, wait " .. self.cdLeft .. " seconds for the next one"
 			end	
 
-			if responseMessage ~= nil and isPlayerOnline(prioPlayerName) and prioPlayerName ~= playerName then
+			if isPlayerOnline(prioPlayerName) and prioPlayerName ~= playerName then
+				if responseMessage == nil then
+					responseMessage = ""
+				end
 				responseMessage = responseMessage .. " (Note: you are not marked as the primary receiver)"
 			end 
 
@@ -347,7 +364,9 @@ function frame:onUpdate(sinceLastUpdate)
 			if self.cdLeft == 0 then
 				self.onCd = false
 				
-				if isPlayerOnline(lastPlayerName) then 
+				if isPlayerOnline(prioPlayerName) then 
+					whisperPlayer(prioPlayerName, "Power Infusion is ready")
+				elseif isPlayerOnline(lastPlayerName) then 
 					whisperPlayer(lastPlayerName, "Power Infusion is ready")
 				end 
 			end
@@ -378,6 +397,8 @@ function frame:onUpdate(sinceLastUpdate)
 	end
 end
 
+
+
 local function MyAddonCommands(msg, editbox)
 
 	local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
@@ -387,9 +408,11 @@ local function MyAddonCommands(msg, editbox)
 		local target = addTarget(args)	
 	elseif cmd == "remove" and args ~= "" then
 		removeTarget(args)  
+	elseif cmd == "prio" and args ~= "" then
+		prioTarget(args)  
 	else
 		-- If not handled above, display some sort of help message
-		print("Syntax: /mtpi (add|remove) someIdentifier");
+		print("Syntax: /mtpi (add|remove|prio) someIdentifier");
 	end
 
   end
