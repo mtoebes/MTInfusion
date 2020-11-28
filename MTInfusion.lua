@@ -1,3 +1,4 @@
+local rc = LibStub("LibRangeCheck-2.0")
 
 local castSpellName = "Power Infusion" --  "Power Infusion"  -- "Power Infusion" -- "Power Word: Shield"
 local cdSpellName = "Power Infusion"
@@ -87,6 +88,32 @@ local function buildPlayerButton(frame, target)
 	target.buttonTex:SetColorTexture(1.0, 0.5, 0); 
 	target.buttonTex:SetAlpha(0.5);
 
+
+	local button2 = CreateFrame("CheckButton", "playerButton"..target.playerName, frame, 'SecureUnitButtonTemplate')
+	button2:SetSize(20,20)
+	button2:SetPoint("CENTER",60,-60 * target.index)
+	button2:SetAlpha(1.0);
+	
+	button2:SetNormalFontObject("GameFontNormalSmall");
+	button2:SetHighlightFontObject("GameFontHighlightSmall");
+	button2:SetDisabledFontObject("GameFontDisableSmall");
+	
+	button2:SetAttribute("*type1", "macro") -- Target unit on left click
+	
+	button2.text = button2:CreateFontString(nil, "OVERLAY")
+	button2.text:SetPoint("CENTER")
+	button2.text:SetFont(STANDARD_TEXT_FONT, 16, "THINOUTLINE")
+	button2.text:SetText("LOS")
+	
+	target.macrotext2 = "/target "..target.playerName.."\n".."/w "..target.playerName.." Cannot cast PI right now due to Range/LoS/Dont give a shit about your parses"
+	button2:SetAttribute("macrotext",target.macrotext2)
+	target.button2 = button2
+
+	target.buttonTex2 = target.button2:CreateTexture("ARTWORK");
+	target.buttonTex2:SetAllPoints();
+	target.buttonTex2:SetColorTexture(1.0, 0.5, 0); 
+	target.buttonTex2:SetAlpha(0.5);
+
 	return button
 end 
 
@@ -131,6 +158,7 @@ local function removeTarget(playerName)
 	end
 
 	existingTarget.button:Hide();
+	existingTarget.button2:Hide();
 
 	table.remove(targetList, index)
 
@@ -139,6 +167,7 @@ local function removeTarget(playerName)
 		if target.index >= index then
 			target.index = target.index-1
 			target.button:SetPoint("CENTER",0,-60 * target.index)
+			target.button2:SetPoint("CENTER",60,-60 * target.index)
 		end
 	end 
 
@@ -156,31 +185,34 @@ local function updateTarget(cdLeft, target)
 		return
 	end 
 
-	if isPlayerOnline(playerName) then 
-		
-		alpha = .5
-		buttonText = playerName
+	
+	local minRange, maxRange = rc:GetRange(playerName, false)
 
-		if cdLeft == 0 then
-			if playerStatus then
-				-- Green 
-				buttonTex:SetColorTexture(0.0, 1.0, 0.0);
-			else 
-				-- Yellow
-				buttonTex:SetColorTexture(1.0, 1.0, 0.0); 
-			end 
-		else
+	alpha = .5
+	buttonText = playerName
 
-			buttonText = buttonText.."\n"..cdLeft.." sec"
+	if not minRange or minRange >= 40 then
+	
+		buttonTex:SetColorTexture(0.8, 0.4, 0.0);
 
-			-- Red 
-			buttonTex:SetColorTexture(1.0, 0.0, 0.0); 
+	elseif cdLeft == 0 then
+
+		buttonText =  buttonText.. " (" .. minRange .. ")"
+
+		if playerStatus then
+			-- Green 
+			buttonTex:SetColorTexture(0.0, 1.0, 0.0);
+		else 
+			-- Yellow
+			buttonTex:SetColorTexture(1.0, 1.0, 0.0); 
 		end 
-	else 
-		
-		alpha = 0
-		buttonText = nil
-	end
+	else
+
+		buttonText = buttonText.."\n"..cdLeft.." sec"
+
+		-- Red 
+		buttonTex:SetColorTexture(1.0, 0.0, 0.0); 
+	end 
 
 	button.text:SetText(buttonText)
 	buttonTex:SetAlpha(alpha)
@@ -283,7 +315,7 @@ frame:SetScript("OnUpdate", function(self, sinceLastUpdate) frame:onUpdate(since
 function frame:onUpdate(sinceLastUpdate)
 	self.sinceLastUpdate = (self.sinceLastUpdate or 0) + sinceLastUpdate;
 
-	interval = 5
+	interval = 1
 
 	if (self.cdLeft == nil) then
 		self.cdLeft = getPICooldown()
