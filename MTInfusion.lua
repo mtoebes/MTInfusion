@@ -125,6 +125,8 @@ local function addTarget(playerName)
 		return
 	end 
 
+	playerName = playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
+	print(playerName)
 	local existingTarget, index = getTarget(playerName) 
 
 	if existingTarget ~= nil then
@@ -151,6 +153,12 @@ local function addTarget(playerName)
 end
 
 local function removeTarget(playerName)
+
+	if playerName == nil then
+		return
+	end 
+	
+	playerName = playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
 
 	local existingTarget, index = getTarget(playerName) 
 	if existingTarget == nil then
