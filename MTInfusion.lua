@@ -119,14 +119,28 @@ end
 
 local frame = buildFrame()
 
-local function addTarget(playerName)
+local function formatTargetName(playerName)
+
+	if playerName ~= nil and playerName == "target" then
+		playerName, realm = UnitName("target")
+	end
 
 	if playerName == nil then
 		return
 	end 
 
-	playerName = playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
-	print(playerName)
+	return playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
+
+end
+
+local function addTarget(playerName)
+
+	playerName = formatTargetName(playerName)
+
+	if playerName == nil then
+		return
+	end 
+
 	local existingTarget, index = getTarget(playerName) 
 
 	if existingTarget ~= nil then
@@ -152,18 +166,13 @@ local function addTarget(playerName)
 
 end
 
-local function removeTarget(playerName)
-
-	if playerName == nil then
-		return
-	end 
+local function removePlayerButton( frame, existingTarget )
 	
-	playerName = playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
-
-	local existingTarget, index = getTarget(playerName) 
 	if existingTarget == nil then
 		return
 	end
+
+	existingTarget.isPendingTeardown = false
 
 	existingTarget.button:Hide();
 	existingTarget.button2:Hide();
@@ -179,18 +188,41 @@ local function removeTarget(playerName)
 		end
 	end 
 
+end
+
+local function removeTarget(playerName)
+
+	playerName = formatTargetName(playerName)
+
+	if playerName == nil then
+		return
+	end 
+
+	local existingTarget, index = getTarget(playerName) 
+	if existingTarget == nil then
+		return
+	end
+
+
+	existingTarget.isPendingTeardown = InCombatLockdown()
+
+	if existingTarget.isPendingTeardown==false then 
+		removePlayerButton(frame, existingTarget)
+	end 
+
 
 end 
 
 
 local function prioTarget(playerName)
 
+
+	playerName = formatTargetName(playerName)
+
 	if playerName == nil then
 		return
 	end 
 
-	playerName = playerName:gsub("(%w)(%w*)", function(a,b) return string.upper(a)..string.lower(b) end)
-	
 	prioPlayerName = playerName
 	addTarget(playerName)
 end 
@@ -385,6 +417,10 @@ function frame:onUpdate(sinceLastUpdate)
 			for i, target in ipairs(targetList) do
 				if target.isPendingSetup then
 					buildPlayerButton(frame, target)
+				end
+
+					if target.isPendingTeardown then
+					removePlayerButton(frame, target)
 				end
 			end 
 		end 
