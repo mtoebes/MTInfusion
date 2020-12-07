@@ -7,7 +7,7 @@ When you click on a target, auto casts PI and whispers the target to let them kn
 Also:
 1. Makes an alert noise when someone whispers you the word "PI" (and adds them to a list of targets if not present).
 2. If PI is not yet up, whispers back what the cooldown is
-3. Everytime PI comes off CD, whispers the last person who asked for PI to let them know 
+3. Everytime PI comes off CD, whispers the last person who asked for PI to let them know (OR whispers your prio target if set)
 4. allows you to manually add/remove/prio slash commands to manually add/remove players (or your target) to the list and to prio a certain player (so that you always whisper them rather than your last target)
 
 Note that due to blizzard anti-botting contraints, adding and removing targets will only be performed once you exit combat.
