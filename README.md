@@ -34,3 +34,4 @@ Note that due to blizzard anti-botting contraints, adding and removing targets w
 
 
 
+![Screenshot](https://github.com/mtoebes/MTInfusion/blob/master/mtinfusion.png)
